@@ -1,0 +1,180 @@
+---
+title: "DAM At1 EDA & Data Cleaning"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#note that correct working directory is setwd("/Users/alex/Projects/DAMAT1")
+#load libraries 
+#library(tidyverse)
+#library(modelr)
+library(readr)
+#library(ggplot2)
+#library(dplyr)
+#library(ggExtra)
+#library(dygraphs)
+```
+
+### AT1 Spring 2018: Part A
+## Data Cleaning and Exploratory Data Analysis on "transactions.csv" dataset
+I will explore the data using predictor variables like date, location, industry and customer_id.
+```{r}
+
+#import dataset using read.csv
+transactions <- read_csv("transactions.csv")
+
+```
+
+# 1. a. Cleaning the data
+
+It was noted that readr did not identify the date column as a data type of date. In order to give the date colum a correct datatype of date, the parse_date function is used to parse the values in the date colum as dates.
+
+To ensure that any other artefacts are cleaned up, a new 'clean' csv is written and read back in (overwriting the original transaction variable) and the column types are explicitly set.
+
+```{r}
+
+# Use the date parser to get the date data into an understandable format
+transactions$date <- parse_date(transactions$date, format="%d/%m/%y")
+
+# Write a new 'clean' csv with correct date formats and remove any artefacts from opening in Excel
+write_csv(transactions, "transactions_clean.csv")
+
+# Read in the clean data, overwriting transactions and explicitly declaring the data types for each column
+transactions <- read_csv("transactions_clean.csv",
+                         col_types = cols(
+                           date = col_date(format = ""),
+                           customer_id = col_character(),
+                           industry = col_integer(),
+                           location = col_integer(),
+                           monthly_amount = col_double()
+                           )
+                         )
+# Verify transactions data is using the correct data types
+spec(transactions)
+
+# View the data structure
+View(transactions)
+```
+
+#1. b. Description of 2 insights just from EDA
+
+##show histograms of industry and location variables
+```{r}
+par(mfrow=c(1,2))
+hist(transactions$industry, main = "Histogram of number of transactions by Industry", xlab="Industry", ylab="Number of transactions", xlim = c(0,10), ylim=c(0,50000), las=0)
+hist(transactions$location, main = "Histogram of number of transactions by Location", xlab="Location", ylab="Number of transactions", xlim = c(0,10), ylim=c(0,50000), las=0)
+```
+# More visual exploration
+It looks like locations one and two account for the greatest majority of monthly transactions and there's something about industry code 6 that's very distinct from the other industries.
+
+```{r}
+# Let's mutate the dataset to create a new column called 'monthly_amount_above_mean'
+transactions <- transactions %>%
+  # creating a new variable to classify transaction column
+  mutate(monthly_amount_above_mean = ifelse(monthly_amount > mean(monthly_amount), TRUE, FALSE))
+```
+
+```{r}
+# plot a bar chart by monthly amounts by date
+qplot(x = date, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by month, showing proportion above the mean")
+```
+
+This reveals most monthly amounts are below the mean and the monthly amounts grow steadily rather than steeply. Let's now look at it by industry and location, too
+```{r}
+# plot a bar chart by monthly amounts by location
+qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "NUmber of transactions by location, showing proportion above the mean")
+
+```
+#So what about by industry?
+
+```{r}
+# plot a bar chart by monthly amounts by industry
+qplot(x = industry, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by industry, showing proportion above the mean")
+```
+##Some insights
+Location 1 and 2 have the highest volumes of monthly_amounts, as well as the most above-average monthly amounts.
+
+Industry 6 has the least amount of sales, but when they have them, they are all above the mean of all sales amounts.
+
+Industries 3, 5 and 9 look to have a greater proportion of their transactions above the mean average monthly amount
+
+Let's aggregate the data and see if we can get more insights
+```{r}
+# Aggregate the data, grouping by date, industry and location, and calculating the mean monthly_amount
+aggregated_transactions <- transactions %>%
+  group_by(date, industry, location) %>%
+  summarize(mean_monthly_amount = mean(monthly_amount, na.rm = TRUE))
+
+# View the data
+aggregated_transactions
+
+```
+
+
+```{r}
+#let's plot the location variable against the average monthly amount , ylim=c(0,1000000)
+#industry_boxplot <- boxplot(mean_monthly_amount ~ industry, data = aggregated_transactions) +
+#      geom_point()
+```
+
+```{r}
+#let's try to make a time series plot
+#library(ggfortify)
+#autoplot(~ monthly_amount) + labs(title="Monthly Sales Amount")
+```
+
+
+```{r}
+#let's visualise some of the first import of the data as a scatterplot
+ggplot(transactions, aes(x=industry, y=monthly_amount, color=location)) + 
+  geom_point() + geom_smooth()
+```
+fG
+GA
+
+```{r}
+#let's visualise the second data import transactions as a scatterplot to see if there's a difference
+ggplot(transactions, aes(x=industry, y=monthly_amount, color=location)) + 
+  geom_point() + geom_smooth()
+```
+No difference! These plots are identical, even though we are using two slightly different column structures of the same data.
+
+## More exploration using GGPLOT2 & Dp
+
+That's a slightly ridiculous plot, but it shows there is something going up with the industry number 6:
+```{r}
+##Take the column "industry" and make a histogram of it
+qplot(transactions$industry, geom="histogram", binwidth=0.5) 
+```
+The histogram shows the industry variable is front weighted, I THINK to a poisson distribution. Still not super helpful
+```{r}
+##Take a different column "location" and make a histogram of it
+qplot(transactions$location, geom="histogram", binwidth=0.5) 
+```
+Location data is also front weighted.
+
+```{r}
+#get the sum of all monthly amounts by location
+barplot <- ggplot(transactions, aes(x=monthly_amount, y=location)) + geom_bar(stat = "identity")
+```
+
+
+
+```{r}
+#another scatterplot
+ggplot(transactions) + geom_point(aes(x=location, y=monthly_amount, color=industry)) + geom_smooth(aes(x=location, y=monthly_amount, color=industry)) # Specifying the aesthetics inside the geoms.
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+#2. a. ii. Create a line plot of the variable monthly_amount, for industry = 1 and location = 1
+
+ggplot(data=filter(aggregated_transactions, industry == 1 & location == 1), aes(x=date, y=mean_monthly_amount, group=1)) + geom_line(color="red") + geom_point()
+```
+
+
+
