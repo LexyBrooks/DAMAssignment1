@@ -9,35 +9,53 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 #note that correct working directory is setwd("/Users/alex/Projects/DAMAT1")
 #load libraries 
-#library(tidyverse)
-#library(modelr)
+library(tidyverse)
+library(modelr)
 library(readr)
-#library(ggplot2)
-#library(dplyr)
-#library(ggExtra)
-#library(dygraphs)
+library(ggplot2)
+library(dplyr)
+library(ggExtra)
+library(dygraphs)
 ```
 
 ### AT1 Spring 2018: Part A
 ## Data Cleaning and Exploratory Data Analysis on "transactions.csv" dataset
 I will explore the data using predictor variables like date, location, industry and customer_id.
 ```{r}
-
-#import dataset using read.csv
+#import dataset using readr's read_csv
 transactions <- read_csv("transactions.csv")
-
 ```
 
-# 1. a. Cleaning the data
+## 1. a. Cleaning the data
 
-It was noted that readr did not identify the date column as a data type of date. In order to give the date colum a correct datatype of date, the parse_date function is used to parse the values in the date colum as dates.
+Readr did not identify the date column as the specific data type of date, so we use the parse_date functionto parse the values in the date colum as dates.
 
 To ensure that any other artefacts are cleaned up, a new 'clean' csv is written and read back in (overwriting the original transaction variable) and the column types are explicitly set.
 
 ```{r}
+#Use the date parser to get the data data into an understandable format which matches the data dictionary
+transactions$date <- parse_date(transactions$date, format = "%d%m%y")
+#Write a new 'clean' csv with correct date formates and remove and artefacts from opening in Excel
+write_csv(transactions, "transactions_clean.csv")
+#Read in the clean data, overwriting transactions and explicitly declaring the data types for each column
+transactions <- read_csv("transactions_clean.csv",
+                        col_types = cols(
+                          date = col_date(format=""),
+                          customer_id = col_character(),
+                          industry = col_integer(),
+                          monthly_amount = col_double())
+                        )
+#Verify transactions data is using the correct data types 
+spec(transactions)
+#View the data structure
+View(transactions)
+#Date is showing as NA
+```
 
+
+```{r}
 # Use the date parser to get the date data into an understandable format
-transactions$date <- parse_date(transactions$date, format="%d/%m/%y")
+transactions$date <- parse_date(transactions$date, format="%d/%m/%Y")
 
 # Write a new 'clean' csv with correct date formats and remove any artefacts from opening in Excel
 write_csv(transactions, "transactions_clean.csv")
@@ -60,7 +78,7 @@ View(transactions)
 ```
 
 #1. b. Description of 2 insights just from EDA
-
+Let's visualise some of the variables to see what 
 ##show histograms of industry and location variables
 ```{r}
 par(mfrow=c(1,2))
@@ -78,15 +96,14 @@ transactions <- transactions %>%
 ```
 
 ```{r}
-# plot a bar chart by monthly amounts by date
+# plot a bar chart by monthly amounts by date (DATE IS SHOWING NA, SO IT CAN'T PLOT IT)
 qplot(x = date, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by month, showing proportion above the mean")
 ```
 
 This reveals most monthly amounts are below the mean and the monthly amounts grow steadily rather than steeply. Let's now look at it by industry and location, too
 ```{r}
 # plot a bar chart by monthly amounts by location
-qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "NUmber of transactions by location, showing proportion above the mean")
-
+qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by location, showing proportion above the mean")
 ```
 #So what about by industry?
 
@@ -94,13 +111,15 @@ qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom 
 # plot a bar chart by monthly amounts by industry
 qplot(x = industry, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by industry, showing proportion above the mean")
 ```
-##Some insights
+##Some insights for the sales manager
 Location 1 and 2 have the highest volumes of monthly_amounts, as well as the most above-average monthly amounts.
 
 Industry 6 has the least amount of sales, but when they have them, they are all above the mean of all sales amounts.
 
 Industries 3, 5 and 9 look to have a greater proportion of their transactions above the mean average monthly amount
 
+### Basic model fitting
+## 2. a. Creating the model
 Let's aggregate the data and see if we can get more insights
 ```{r}
 # Aggregate the data, grouping by date, industry and location, and calculating the mean monthly_amount
@@ -110,17 +129,16 @@ aggregated_transactions <- transactions %>%
 
 # View the data
 aggregated_transactions
-
 ```
-
+## 2. a. ii. Create a line plot of the variable monthly_amoount for industry = 1 and location = 1
 
 ```{r}
 #let's plot the location variable against the average monthly amount , ylim=c(0,1000000)
-#industry_boxplot <- boxplot(mean_monthly_amount ~ industry, data = aggregated_transactions) +
+industry_boxplot <- boxplot(mean_monthly_amount ~ industry, data = aggregated_transactions) +
 #      geom_point()
 ```
 
-```{r}
+ ```{r}
 #let's try to make a time series plot
 #library(ggfortify)
 #autoplot(~ monthly_amount) + labs(title="Monthly Sales Amount")
@@ -144,11 +162,6 @@ No difference! These plots are identical, even though we are using two slightly 
 
 ## More exploration using GGPLOT2 & Dp
 
-That's a slightly ridiculous plot, but it shows there is something going up with the industry number 6:
-```{r}
-##Take the column "industry" and make a histogram of it
-qplot(transactions$industry, geom="histogram", binwidth=0.5) 
-```
 The histogram shows the industry variable is front weighted, I THINK to a poisson distribution. Still not super helpful
 ```{r}
 ##Take a different column "location" and make a histogram of it
