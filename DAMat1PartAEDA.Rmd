@@ -58,15 +58,12 @@ ggplot(transactions, aes(x=industry, y=monthly_amount, color=location)) +
 transactions <- transactions %>%
   # creating a new variable to classify transaction column
   mutate(monthly_amount_above_mean = ifelse(monthly_amount > mean(monthly_amount), TRUE, FALSE))
-```
-
-```{r}
-# plot a bar chart by monthly amounts by date (DATE IS SHOWING NA, SO IT CAN'T PLOT IT)
+# plot a bar chart by monthly amounts by date  
 qplot(x = date, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by month, showing proportion above the mean")
+
 ```
 
 This reveals most monthly amounts are below the mean and the monthly amounts grow steadily rather than steeply. Let's now look at it by industry and location, too
-
 
 ```{r}
 # plot a bar chart by monthly amounts by location
@@ -78,7 +75,7 @@ qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom 
 # plot a bar chart by monthly amounts by industry
 qplot(x = industry, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by industry, showing proportion above the mean")
 ```
-#1. b. Description of 2 insights just from EDA
+#1. b. Description of 2 insights from EDA
 ##Some insights for the sales manager
 Location 1 and 2 have the highest volumes of monthly_amounts, as well as the most above-average monthly amounts.
 
@@ -121,151 +118,65 @@ dataSet <- filter(aggregated_transactions, industry == 1 & location == 1)
 #take a look at the filtered dataSet
 str(dataSet)
 
-# Create a function to compute the lm based on a specific data frame, target and predictor. Return the linear model.
-run_linear_model <- function(df, target, predictor) {
-  # Train a linear regression model on all the predictors (using '.' in the formula does this)
-  data.lm = lm(formula = target ~ predictor, data = dataSet)
-  # Analyse the model output, take note of the p-values, F-statistic and Adjusted R-squared for comparison purposes. Ideally looks at RMSE - root mean square error - to evaluate model choice.
-  return(data.lm)
-}
-
-# Run linear model with monthly_amount as target and month number as the predictor
-month_number.lm <- run_linear_model(dataSet, dataSet$monthly_amount, dataSet$month_number)
-  # plot the regression diagnostics.  Note the red line on two left plots is not straight
-summary(month_number.lm)
-plot(month_number.lm)
-predictedData <- predict(month_number.lm, newdata=testingSet)
-# Calculate RMSE
-rmse(dataSet$monthly_amount, predictedData )
-
-# Run linear model with monthly_amount as target and date as the predictor
-date.lm <- run_linear_model(dataSet, dataSet$monthly_amount, dataSet$date)
-  # plot the regression diagnostics.  Note the red line on two left plots is not straight
-summary(date.lm)
-plot(date.lm)
-
-# Run linear model with monthly_amount as target and month number + date as the predictor
-month_number_and_date.lm <- run_linear_model(dataSet, dataSet$monthly_amount, dataSet$month_number + dataSet$date)
-  # plot the regression diagnostics.  Note the red line on two left plots is not straight
-summary(month_number_and_date.lm)
-plot(month_number_and_date.lm)
-
-# Run linear model with monthly_amount as target and date + month_number as the predictor
-date_and_month_number.lm <- run_linear_model(dataSet, dataSet$monthly_amount, dataSet$date + dataSet$month_number)
-  # plot the regression diagnostics.  Note the red line on two left plots is not straight
-summary(date_and_month_number.lm)
-plot(date_and_month_number.lm)
-```
-##2. a. iii) ii) How to split test and train sets
-```{r}
+# Run linear model with testing and training sets, with monthly_amount as target and month number as the predictor
 #Training set is every month other than month 12
 trainingSet <- filter(dataSet, month_number != "12")
 #Testing set is data from month 12 only
 testingSet <- filter(dataSet, month_number == "12")
-#Linear model is the monthly amount against date from the training set
-trained.lm <- lm(monthly_amount~date, data=trainingSet)
-trained.lm
-summary(trained.lm)
-#Predicting the linear model using the testing set  
-prediction <- predict(trained.lm, newdata=testingSet)
-#Show predicted values for the 3 monthly amounts for months with a value of 12
-prediction
-#the difference of the prediction against the actual monthly amounts
-delta <- prediction - testingSet$monthly_amount
-#see delta
-delta
-# Calculate RMSE
-testingSet$monthly_amount
-prediction
-rmse(testingSet$monthly_amount, prediction)
+```
+Now for the tests of each one  
+```{r}
+month_number.lm <- lm(monthly_amount~month_number, data=trainingSet)
+  # plot the regression diagnostics.  Note the red line on two left plots is not straight
+summary(month_number.lm)
+```
+Now to plot month_number
+```{r}
+plot(month_number.lm)
+```
+
+```{r}
+#FIXTHISpredictedData <- predict(month_number.lm, testingSet)
+#FIX BROKEN BITrmse(dataSet$monthly_amount, predictedData)
+```
+
+# Run linear model with monthly_amount as target and date as the predictor
+```{r}
+date.lm <- lm(monthly_amount~date, data=trainingSet)
+  # plot the regression diagnostics.  Note the red line on two left plots is not straight
+summary(date.lm)
+```
+Now to plot date
+```{r}
+plot(date.lm)
+```
+
+# Run linear model with monthly_amount as target and month number + date as the predictor
+```{r}
+month_number_and_date.lm <- lm(monthly_amount~month_number + date, data=trainingSet)
+  # plot the regression diagnostics.  Note the red line on two left plots is not straight
+summary(month_number_and_date.lm)
+```
+# Plot month_number + date
+```{r}
+plot(month_number_and_date.lm)
+```
+
+# Run linear model with monthly_amount as target and date + month_number as the predictor
+```{r}
+date_and_month_number.lm <- lm(monthly_amount~date + month_number, data=trainingSet)
+  # plot the regression diagnostics.  Note the red line on two left plots is not straight
+summary(date_and_month_number.lm)
+```
+#Now to plot date + month_number
+```{r}
+plot(date_and_month_number.lm)
 ```
 ##2. a. iii) ii) How to split test and train sets
+Alex to write about how it was done in this model
 
-```{r}
-#rows <- nrow(dataSet)
-#f <- 0.5
-#upper_bound <- floor(f * rows)
-#sampleDataSet <- dataSet[sample(rows), ]
-#trainingSet <- sampleDataSet[1:upper_bound, ]
-trainingSet <- filter(dataSet, month_number != "12")
-
-#testingSet <- sampleDataSet[(upper_bound+1):rows, ]
-testingSet <- filter(dataSet, month_number == "12")
-
-length(testingSet)
-
-plot(trainingSet$date,trainingSet$monthly_amount, main="test",
-xlab="date", ylab="monthly amount")
-
-
-
-
-myLM <- lm(monthly_amount ~ date, data = testingSet)
-plot(trainingSet$date,trainingSet$monthly_amount)
-abline(myLM)
-
-myLinearModel
-
-View(testingSet)
-myLinearModel <- lm(monthly_amount ~ date, data = trainingSet)
-
-myLinearModel
-
-predictedData <- predict(myLinearModel, newdata=testingSet)
-
-predictedData
-
-delta <- predictedData - testingSet$monthly_amount
-
-delta
-
-t.test(delta, conf.level = 0.95)
-
-plot(delta)
-
-```
 ##2. a. iv) Create a prediction for monthly_amount in December 2016
-```{r}
-multiple_runs <- function(df,class_variable_name,train_fraction,nruns){
-  
-  #Purpose:
-  #Builds rpart model for nrun data partitions
-  
-  #Return value:
-  #Vector containing nrun accuracies
-  
-  #Arguments:
-  #df: variable containing dataframe
-  #class_variable_name: class name as a quoted string. e.g. "Class"
-  #train_fraction: fraction of data to be assigned to training set (0<train_fraction<1)
-  
-  #nruns: number of data partitions
-  
-  #find column index of class variable
-  typeColNum <- grep(class_variable_name,names(df))
-  #initialize accuracy vector
-  accuracies <- rep(NA,nruns)
-  #set seed (can be any integer)
-  set.seed(24)
-  #partition data
-  trainset_size <- floor(train_fraction * nrow(df))
-
-  trainset_indices <- sample(seq_len(nrow(df)), size = trainset_size)
-  trainset <- df[trainset_indices, ]
-  testset <- df[-trainset_indices, ]
-  
-  #for (i in 1:nruns){
-    #build model 
-    #paste builds formula string and as.formula interprets it as an R formula
-    #rpart_model <- rpart(as.formula(paste(class_variable_name,"~.")),data = trainset, method="class")
-    #predict on test data
-    #rpart_predict <- predict(rpart_model,testset[,-typeColNum],type="class")
-    #accuracy
-    #accuracies[i] <- mean(rpart_predict==testset[[class_variable_name]])
-   # }
-  #return(accuracies)
-}
-```
+let me work this out
 ##2. b. Describe the model
 ## 2. b. i) How well does the model fit the data it is trained on in a statistical sense
 Alex to describe and define an appropriate quantative measure and justify it
