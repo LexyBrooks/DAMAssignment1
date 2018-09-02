@@ -261,26 +261,37 @@ Describe what that means
 ```{r}
 #Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only possible predictors is month number and/or date.
 
-industries <- sort(unique(transactions$industry))
-locations <- sort(unique(transactions$location))
-predictions <- data.frame()
-
-for(i in 1:2) {
-  for(j in 1:2) {
-    dataSet <- filter(aggregated_transactions, industry == industries[i] & location == locations[j])
-    industry <- industries[i]
-    location <- locations[i]
-    # Run linear model with testing and training sets, with monthly_amount as target and month number as the predictor
-    #Training set is every month other than month 12
-    trainingSet <- filter(dataSet, month_number != "12")
-    #Testing set is data from month 12 only
-    testingSet <- filter(dataSet, month_number == "12")
+get_prediction_delta <- function(df, current_industry, current_location) {
+  
+  dataSet <- filter(df, industry == current_industry & location == current_location)
+  # Run linear model with testing and training sets, with monthly_amount as target and month number as the predictor
+  
+  #Training set is every month other than month 12
+  trainingSet <- filter(dataSet, month_number != "12")
+  #Testing set is data from month 12 only
+  testingSet <- filter(dataSet, month_number == "12")
+  
+  if (all(is.na(trainingSet$monthly_amount)) || all(is.na(trainingSet$month_number)) || all(is.na(trainingSet$date))) {
+    delta <- "No prediction available"
+  } else {
     current.lm <- lm(monthly_amount~month_number + date, data=trainingSet)
     prediction <- predict(current.lm, testingSet)
     delta <- prediction - testingSet$monthly_amount
-      # plot the regression diagnostics.  Note the red line on two left plots is not straight
-    print(paste(industries[i], locations[j]))
-    print(testingSet$monthly_amount)
+  }
+  return(delta)
+}
+
+industries <- sort(unique(transactions$industry))
+locations <- sort(unique(transactions$location))
+
+for(i in 1:length(industries)) {
+  for(j in 1:length(locations)) {
+    print(paste("Prediction for industry", industries[i],"and location",locations[j]))
+    print("========================================")
+    current_prediction_delta <- get_prediction_delta(aggregated_transactions, industries[i], locations[j])
+    print(current_prediction_delta)
+    print("========================================")
+
   }
 }
 
