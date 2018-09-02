@@ -291,6 +291,7 @@ for(i in 1:length(industries)) {
     current_prediction_delta <- get_prediction_delta(aggregated_transactions, industries[i], locations[j])
     print(current_prediction_delta)
     print("========================================")
+
   }
 }
 
