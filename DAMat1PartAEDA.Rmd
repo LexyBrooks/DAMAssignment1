@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(ggplot2)
 library(dplyr)
+library(xts)
 ```
 
 ### AT1 Spring 2018: Part A
@@ -61,6 +62,7 @@ ggplot(transactions, aes(x=date, y=monthly_amount, color=industry)) +
   geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Industry and monthly amount over time", x="Date", y="Monthly Amount")
 
 ```
+
 ```{r}
 #let's visualise a scatterplot showing location variables against monthly amount over time
 ggplot(transactions, aes(x=date, y=monthly_amount, color=location)) + 
@@ -69,6 +71,7 @@ ggplot(transactions, aes(x=date, y=monthly_amount, color=location)) +
 ## What about exploring detail about higher than average sales values?
 It makes sense to explore where and why the monthly amounts are higher than average, using the 'mean' as the indicator of average.
 ```{r}
+
 #Mutate the dataset to create a new column called 'monthly_amount_above_mean'  
 transactions <- transactions %>%
   # creating a new variable to classify transaction column
@@ -203,6 +206,49 @@ ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), ae
 
 ```{r}
 # Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only other possible predictor is month number and/or date.
+dataSet <- filter(aggregated_transactions, industry == 1 & location == 1)
+#take a look at the filtered dataSet
+str(dataSet)
+
+#Training set is every year other than 2016
+trainingSet <- filter(dataSet, year_number != "2016")
+#Testing set is data from 2016 only
+testingSet <- filter(dataSet, year_number == "2016")
+```
+
+###SO we then need to run these same linear models on the 
+### Training the monthly_amount ~ month_number linear model
+
+# Create a line plot of the variable monthly_amount for industry = 4 and location = 4
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 4 & location == 4), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 4 and Location 4", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 5 & location == 5), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 5 and Location 5", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, location == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Location 6 ONLY", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 6 ONLY", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 7 & location == 7), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 7 and Location 7", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 8 & location == 8), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 8 and Location 8", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 9 & location == 9), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 9 and Location 9", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 and Location 10", x="Date", y="Mean Monthly Amount")
+```
+
+### 2. a. iii) i) Trying to train the linear regression model with monthly_amount as the target 
+
+```{r}
+# Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only other possible predictor is month number and/or date.
 
 calculate_predictions <- function(df, industries, locations) {
 
@@ -279,6 +325,7 @@ prediction
 ### Training the monthly_amount ~ month_number linear model
 
 ```{r}
+
 # Run linear model with testing and training sets, with monthly_amount as target and month_number as the predictor
 month_number.lm <- lm(monthly_amount~month_number, data=trainingSet)
   # plot the regression diagnostics.  Note the red line on two left plots is not straight
