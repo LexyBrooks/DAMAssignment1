@@ -389,14 +389,17 @@ calculate_predictions <- function(df, industries, locations) {
         testingSet = tail(arrange(temp, time_number), testingNum)
         
         # Run the model
-        model = lm(monthly_amount~time_number, data=trainingSet)
+        training.model = lm(monthly_amount~time_number, data=trainingSet)
+       # testing.model = lm(monthly_amount~time_number, data=testingSet)
         
         # Calculate the mean standard error
-        mse <- mean(residuals(model)^2)
+        training.mse <- mean(residuals(training.model)^2)
+        #testing.mse <- mean(residuals(testing.model)^2)
         
         # Calculate root mean squared error
-        rmse <- sqrt(mse)
-                
+        training.rmse <- sqrt(training.mse)
+       # testing.rmse <- sqrt(testing.mse)
+
         ### Now, add an extra row into temp for the December 2016 prediction, giving December 2016 a monthly_amount of 0
         
         # Create a dataframe containing just the December 2016 data
@@ -410,18 +413,22 @@ calculate_predictions <- function(df, industries, locations) {
         
         # Ensure temp is of type data frame
         temp = as.data.frame(temp)
+        #testingSet = as.data.frame(testingSet)
         
-        # Add the December 2016 row to temp
+        # Add the December 2016 row
         temp = rbind(temp, december_2016)
+       # testingSet = rbind(testingSet, december_2016)
 
         # Output a prediction based on all rows and add it to the temp data frame
-        temp$prediction = predict(model, temp)
+        temp$prediction = predict(training.model, temp)
+        testingSet$prediction = predict(training.model, testingSet)
         
         # Get the last prediction value (which is the Dec 2016 value).
-        december_2016_prediction = tail(temp$prediction, 1)
+        train_dec_2016_prediction = tail(temp$prediction, 1)
+       # test_dec_2016_prediction = tail(testingSet$prediction, 1)
         
         # Create row to add to the output data frame, including industry and location variables
-        dataRow = c(ind,loc,rmse,december_2016_prediction)
+        dataRow = c(ind,loc,training.rmse,train_dec_2016_prediction)
         
       } else {
         # Append entry to output data frame when not enough data to compute
@@ -434,7 +441,7 @@ calculate_predictions <- function(df, industries, locations) {
   }
   
   #Add column names to the output data frame
-  colnames(output) <- c("industry","location", "rmse", "December 2016 Prediction")
+  colnames(output) <- c("industry","location", "train_rmse", "Train Dec 2016 Prediction")
   
   #Return the output
   return(output)
@@ -491,7 +498,7 @@ locations <- sort(unique(aggregated_transactions$location))
 all_predictions <- calculate_predictions(aggregated_transactions, industries, locations)
 
 # Order by RMSE
-arrange(all_predictions, rmse)
+arrange(all_predictions, train_rmse)
 
 ```
 
