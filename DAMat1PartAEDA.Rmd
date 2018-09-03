@@ -13,11 +13,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(ggplot2)
 library(dplyr)
-library(xts)
 ```
 
-### AT1 Spring 2018: Part A
-### Data Cleaning and Exploratory Data Analysis 
+# AT1 Spring 2018: Part A
+## Linear Regression 
+
+## Undertaking EDA
+### 1. a. Cleaning the data
+
+The values in the date column should be in Date format, not Factor. Customer_id needs to be String or Character, not Factor.
+
 ```{r}
 #import dataset. Create a function as we may want to do this again later for a clean import.
 
@@ -34,20 +39,14 @@ read_and_clean_data <- function(datasource, hasHeader=T) {
 
 transactions <- read_and_clean_data("transactions.csv", T)
 
-```
-
-## 1. a. Cleaning the data
-
-The values in the date column should be in Date format, not Factor.
-Customer_id needs to be String or Character, not Factor.  
-
-```{r}
-#View the data and its structure structure to confirm
+#View the data's structure structure to confirm
 str(transactions)
-View(transactions)
+
 ```
 
-## EDA: histograms of industry & location variables
+### 1. b. Description of 2 insights from EDA
+
+#### EDA: histograms of industry & location variables
 
 ```{r}
 par(mfrow=c(1,2))
@@ -68,68 +67,64 @@ ggplot(transactions, aes(x=date, y=monthly_amount, color=industry)) +
 ggplot(transactions, aes(x=date, y=monthly_amount, color=location)) + 
   geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Location and monthly amount over time", x="Date", y="Monthly Amount")
 ```
-## What about exploring detail about higher than average sales values?
+#### What about exploring detail about higher than average sales values?
+
 It makes sense to explore where and why the monthly amounts are higher than average, using the 'mean' as the indicator of average.
 ```{r}
-
 #Mutate the dataset to create a new column called 'monthly_amount_above_mean'  
-transactions <- transactions %>%
+transactions_with_mean_boolean <- transactions %>%
   # creating a new variable to classify transaction column
   mutate(monthly_amount_above_mean = ifelse(monthly_amount > mean(monthly_amount), TRUE, FALSE))
 ```
 
 ```{r}
 # plot a bar chart by monthly amounts by date  
-qplot(x = date, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by month, showing proportion above the mean")
+qplot(x = date, fill = monthly_amount_above_mean, data = transactions_with_mean_boolean, geom = "bar", main = "Number of transactions by month, showing proportion above the mean")
 ```
 
 This reveals most monthly amounts are below the mean and the monthly amounts grow steadily rather than steeply. Let's now look at it by industry and location, too
 
 ```{r}
 # plot a bar chart by monthly amounts by location
-qplot(x = location, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by location, showing proportion above the mean")
+qplot(x = location, fill = monthly_amount_above_mean, data = transactions_with_mean_boolean, geom = "bar", main = "Number of transactions by location, showing proportion above the mean")
 ```
 
-## So what about by industry?
+#### So what about by industry?
 
 ```{r}
 # plot a bar chart by monthly amounts by industry
-qplot(x = industry, fill = monthly_amount_above_mean, data = transactions, geom = "bar", main = "Number of transactions by industry, showing proportion above the mean")
+qplot(x = industry, fill = monthly_amount_above_mean, data = transactions_with_mean_boolean, geom = "bar", main = "Number of transactions by industry, showing proportion above the mean")
 ```
-## 1. b. Description of 2 insights from EDA
-### Some insights for the sales manager
+
+#### Some insights for the sales manager
+
 Location 1 and 2 have the highest volumes of monthly_amounts, as well as the most above-average monthly amounts.
 
 Industry 6 has the least amount of sales transactions but despite its low sales volume, it has above average sales amounts. 
 
 Industries 3, 5 and 9 seem to have a greater proportion of their transactions above the mean average monthly amount
 
-### Basic model fitting
-## 2. a. Creating the model
-The goal wil be to build a model that can predict future monthly_amounts. We will need to add a new variable called "TIME", which gives values of 1 to 47 to each month and year in the dataset. For example: January, 2013 becomes 1, February 2013 becomes 2 until November 2016 becomes 47.
+## 2. Basic model fitting
 
-Time = 1,2,3,4 ... 46, 47
+### 2. a. Creating the model
+The goal wil be to build a model that can predict future monthly_amounts.
 
-We will then do a rough 70:30 test:train data split, with T = 1,2 ..31, 32 in the training set and 33,34 ...46,47 in the test set.
+We will need to add a new variable called "time_number", which is an integer describing the date order of rows in the dataset. For example: January, 2013 becomes 1, February 2013 becomes 2 etc.
+
+We will then do a rough 70:30 test:train data split, ensuring that the lower values seen across December are represented in our testing set.
 
 We potentially need to factor in the yearly growth trend to remove it from our test/train data.
 
-## 2. a. i) Aggregate the data  
-
-###ANTHONY TO ADD TIME VARIABLE HERE
-
+### 2. a. i) Aggregate the data
 
 ```{r}
 # Aggregate the data, grouping by date, industry and location, and calculating the mean monthly_amount
 
-#we may want to do this again, so write a function
-aggregate_transactions <- function(datasource, hasHeaders = T) {
-  
-  #Use the function we wrote earlier
-  dataSet = read_and_clean_data(datasource, hasHeaders)
+# We may want to do this again, so write a function
+aggregate_transactions <- function(df) {
     
   # Aggregate the data, grouping by date, industry and location, and calculating the mean monthly_amount
-  output = dataSet %>%
+  output = df %>%
     group_by(date, industry, location) %>%
     summarize(monthly_amount = mean(monthly_amount, na.rm = TRUE))
   
@@ -148,9 +143,10 @@ aggregate_transactions <- function(datasource, hasHeaders = T) {
 
 }
 
-aggregated_transactions <- aggregate_transactions("transactions.csv", T)
+aggregated_transactions <- aggregate_transactions(transactions)
 
-View(aggregated_transactions)
+aggregated_transactions
+
 ```
 ###ANT - we will want TIME to appear in that dataset above
 ## 2. a. ii. Create a line plot of the variable monthly_amount for industry = 1 and location = 1
@@ -198,66 +194,130 @@ ggplot(data=filter(aggregated_transactions, industry == 9 & location == 9), aes(
 ```{r}
 ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 and Location 10", x="Date", y="Mean Monthly Amount")
 ```
-##ALEX TO PLOT A GRAPH SHOWING SPLIT OF TEST AND TRAIN
 
 ### 2. a. iii) i) Trying to train the linear regression model with monthly_amount as the target
-
-###ANT we make our first linear model WITH location 1 and industry 1 in it.  
-
-```{r}
-# Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only other possible predictor is month number and/or date.
-dataSet <- filter(aggregated_transactions, industry == 1 & location == 1)
-#take a look at the filtered dataSet
-str(dataSet)
-
-#Training set is every year other than 2016
-trainingSet <- filter(dataSet, year_number != "2016")
-#Testing set is data from 2016 only
-testingSet <- filter(dataSet, year_number == "2016")
-```
 
 ###SO we then need to run these same linear models on the 
 ### Training the monthly_amount ~ month_number linear model
 
-# Create a line plot of the variable monthly_amount for industry = 4 and location = 4
 ```{r}
-ggplot(data=filter(aggregated_transactions, industry == 4 & location == 4), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 4 and Location 4", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 5 & location == 5), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 5 and Location 5", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, location == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Location 6 ONLY", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 6 ONLY", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 7 & location == 7), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 7 and Location 7", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 8 & location == 8), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 8 and Location 8", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 9 & location == 9), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 9 and Location 9", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 and Location 10", x="Date", y="Mean Monthly Amount")
+tempSet <- aggregated_transactions[aggregated_transactions$industry == 1 & aggregated_transactions$location == 1, ]
+
+# Want to make sure we capture a couple of months from the preceeding year to capture the seasonal data
+testingNum = 14
+# The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries
+# This value is explained in the function below
+trainingMultiplier = 1.6
+#Arrange dataset by date
+arrange(tempSet, date)
+#Add a time_number value to represent date order
+tempSet$time_number = c(1:nrow(tempSet))
+#Just to make sure, let's order by time_number
+arrange(tempSet, time_number)
+#Training number is the number of rows minus the testingNum
+trainingNum = nrow(tempSet) - testingNum
+#Training set is all rows from the start minus the number in the test set
+trainingSet = head(tempSet, trainingNum)
+#Testing set is the last 'testingNum' rows
+testingSet = tail(tempSet, testingNum)
+
+# Run linear model with testing and training sets, with monthly_amount as target and month_number as the predictor
+month_number.lm <- lm(monthly_amount~month_number, data=trainingSet)
+  # plot the regression diagnostics.  Note the red line on two left plots is not straight
+summary(month_number.lm)
 ```
 
-### 2. a. iii) i) Trying to train the linear regression model with monthly_amount as the target 
+## Assessing the monthly_amount ~ month_number linear model
+
+The summary statistics let us see the size and significance of the fit for this model, which looks unlikely to be significant or a good fit. The  p-value of 0.2639 reflects this. The Adjusted R-Squared of 0.009127 further echoes this observation.
+
+Residuals represent a lack of fit of a line to a model - which can be seen as the model's error - and you can see the minimum to maximum residuals range from -21904.9 to 17485.4.
 
 ```{r}
-# Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only other possible predictor is month number and/or date.
+# let's try to see how linear the relationship between monthly amount and month number really is - or isn't
+ggplot(data = trainingSet, mapping = aes(x = month_number, y = monthly_amount)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") + labs(title="The linear relationship between monthly amount and month number", x="Month Number", y="Monthly Amount")
+```
+
+## It's not the greatest fit, but there is a trend 
+If we plot monthly_amount ~ month_number linear model using statistical diagnostic plots, we can get a better view of the sign, size and significance of the fit and further confirm that month number is not likely to be the best predictor of monthly sales amounts.
+
+```{r}
+# run diagnostic plots for the monthly_amount ~ month_number linear model
+plot(month_number.lm)
+```
+### Training the monthly_amount ~ time_number linear model  
+
+Now let's run a different linear model with monthly_amount as target and time_number as the predictor to see if it fits better.
+
+```{r}
+time_number.lm <- lm(monthly_amount~time_number, data=trainingSet)
+  # plot the regression diagnostics to assess this fit versus previous model
+summary(time_number.lm)
+```
+## Assessing the monthly_amount~time_number linear model 
+
+```{r}
+# let's try to see if there is a better linear relationship between monthly amount and time_number
+ggplot(data = trainingSet, mapping = aes(x = time_number, y = monthly_amount)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") + labs(title="A stronger trend ", x="Date", y="Monthly Amount")
+```
+
+### Compared to monthly_amount ~ month_number linear model, this fits better
+The residuals are closer together and Adjusted R-squared of 0.2947 is getting us closer but the monthly_amount ~ time_number linear model still isn't ideal.  
+
+```{r}
+#the diagnostic plots reveal this model to have more a more significant fit than the first linear model of monthly_amount ~ time_number.
+plot(date.lm)
+```
+
+## Let's see if adding month number AND time_number work better in tandem
+# Run linear model with monthly_amount as target and month number + time_number as the predictor
+
+```{r}
+month_number_and_time_number.lm <- lm(monthly_amount~month_number + time_number, data=trainingSet)
+  # plot the regression diagnostics.   
+summary(month_number_and_time_number.lm)
+```
+##This model of monthly_amount ~ month_number + time_number has not really improved  
+
+The Adjusted R-squared of 0.2823 is lower than our second model, and the p-value is higher.
+
+# Plot monthly_amount ~ month_number + date linear model
+```{r}
+plot(month_number_and_date.lm)
+```
+
+The monthly_amount ~ time_number model was the best of the training data. But far from perfect.
+
+##2. a. iii) ii) How to split test and train sets
+
+###NEED TO RE-WRITE THIS
+I chose to split the test and training data on years, and use the 2016 data as the test. I believed chronological split was the best way to try to predict the future monthly_amount. Unfortunately, the December seasonality is making the prediction hard.
+
+# Function to hold our linear model and output predictions
+Based on the knowledge gained from the assessment above, a function was written which trains a linear regession model, calculates the RMSE (root mean squared error) and determines predictions for all dates in a specific data set.
+
+It also includes a prediction for the missing December 2016 data. This is achieved by adding an extra row to the data for December 2016 (done after training the model and calculated the RMSE) with a monthly_amount of 0 and a time_number one greater than the next highest time number. This allowed a prediction to be made for all rows, including December 2016.
+
+```{r}
+# Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables.
+# See below (line 313 on) for testing of different models
 
 calculate_predictions <- function(df, industries, locations) {
 
   output = data.frame()
   
-  #Want to make sure we capture a couple of months from the preceeding year to capture the seasonal data
+  # Want to make sure we capture a couple of months from the preceeding year to capture the seasonal data
   testingNum = 14
-  #The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries
-  trainingMultiplier = 3
+  # The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries
+  
+  trainingMultiplier = 1.6
+  # 1.6 was the minimum size based on trials that produced the same RMSE compared to higher sampling.
+  # A value of 4 or above returned no results due to insufficient rows. 1.5 or below returned warnings about rank-deficient fits
+  # Between 1.6 and 3 provided the same RMSE error values, however when trainingMUltiplier was >=1.6 or <=2, results included one extra location/industry combination. The lowest number was chosen that did not change RMSE values, in order to maximise chance of calculation on smaller sample sizes without compromising predictions.
   
   for (ind in industries) {
     for (loc in locations) {
@@ -282,128 +342,83 @@ calculate_predictions <- function(df, industries, locations) {
         
         #Training set is all rows from the start minus the number in the test set
         trainingSet = head(temp, trainingNum)
+        
         #Testing set is the last 'testingNum' rows
         testingSet = tail(temp, testingNum)
         
-        # check out the details
-        model = lm(monthly_amount~month_number + time_number, data=trainingSet)
-        
-        # output a prediction
-        temp$prediction = predict(model, temp)
+        # Run the model
+        model = lm(monthly_amount~time_number, data=trainingSet)
         
         # calculate the mean standard error
         mse <- mean(residuals(model)^2)
+        
         # calculate root mean squared error
         rmse <- sqrt(mse)
+                
+        # now, add an extra row into temp for the December 2016 prediction, giving December 2016 a monthly_amount of 0
         
-        # append error to the output data frame, including industry and location variables
-        error = c(ind,loc,rmse)
+        #create a dataframe containing just the December 2016 data
+        december_2016 = data.frame(date = "2016-12-01",
+                                   industry=ind,
+                                   location=loc,
+                                   monthly_amount=0,
+                                   month_number=12,
+                                   year_number=2016,
+                                   time_number=(nrow(temp)+1))
+        
+        #ensure temp is of type data frame
+        temp = as.data.frame(temp)
+        
+        #add the December 2016 row to temp
+        temp = rbind(temp, december_2016)
+
+        #output a prediction based on all rows and add it to the temp data frame
+        temp$prediction = predict(model, temp)
+        
+        #Just to make sure, let's order by time_number again
+        arrange(temp, time_number)
+        
+        #get the last prediction value (which is the Dec 2016 value).
+        december_2016_prediction = tail(temp$prediction, 1)
+        
+        #create row to add to the output data frame, including industry and location variables
+        dataRow = c(ind,loc,rmse,december_2016_prediction)
+        
       } else {
         # append entry to output data frame when not enough data to compute
-        error = c(ind,loc,NA)
+        dataRow = c(ind,loc,NA,NA)
       }
-      output = rbind(output, error)
+      
+      #Add the row to the output dataframe
+      output = rbind(output, dataRow)
     }
   }
-  #Add column names to the output data frame
-  colnames(output) <- c("industry","location", "rmse")
   
+  #Add column names to the output data frame
+  colnames(output) <- c("industry","location", "rmse", "December 2016 Prediction")
+  
+  #Return the output
   return(output)
 }
 
-#Now, aggregate the data again tomake sure it's clean
-aggregated_transactions <- aggregate_transactions("transactions.csv", T)
-
-#Calculate the predictions for location 1 and industry 1
-prediction <- calculate_predictions(aggregated_transactions, 4, 6)
-
-prediction
-
 ```
-
-###SO we then need to run these same linear models on the 
-### Training the monthly_amount ~ month_number linear model
-
-```{r}
-
-# Run linear model with testing and training sets, with monthly_amount as target and month_number as the predictor
-month_number.lm <- lm(monthly_amount~month_number, data=trainingSet)
-  # plot the regression diagnostics.  Note the red line on two left plots is not straight
-summary(month_number.lm)
-```
-
-## Assessing the monthly_amount ~ month_number linear model
-
-The summary statistics let us see the size and significance of the fit for this model, which looks unlikely to be significant or a good fit. The low p-value of .09638 reflects this. The Adjusted R-Squared of 0.05211 further echoes this observation.
-
-Residuals represent a lack of fit of a line to a model - which can be seen as the model's error - and you can see the minimum to maximum residuals range from -24168 to 17750.
-
-```{r}
-# let's try to see how linear the relationship between monthly amount and month number really is - or isn't
-ggplot(data = trainingSet, mapping = aes(x = month_number, y = monthly_amount)) + 
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE, color = "red") + labs(title="The linear relationship between monthly amount and month number", x="Month Number", y="Monthly Amount")
-```
-## It's not the greatest fit, but there is a trend 
-If we plot monthly_amount ~ month_number linear model using statistical diagnostic plots, we can get a better view of the sign, size and significance of the fit and further confirm that month number is not likely to be the best predictor of monthly sales amounts.
-
-```{r}
-# run diagnostic plots for the monthly_amount ~ month_number linear model
-plot(month_number.lm)
-```
-### Training the monthly_amount ~ date linear model  
-
-Now let's run a different linear model with monthly_amount as target and date as the predictor to see if it fits better.
-
-```{r}
-date.lm <- lm(monthly_amount~date, data=trainingSet)
-  # plot the regression diagnostics to assess this fit versus previous model
-summary(date.lm)
-```
-## Assessing the monthly_amount~date linear model 
-
-```{r}
-# let's try to see if there is a better linear relationship between monthly amount and date
-ggplot(data = trainingSet, mapping = aes(x = date, y = monthly_amount)) + 
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE, color = "red") + labs(title="A stronger trend ", x="Date", y="Monthly Amount")
-```
-
-### Compared to monthly_amount ~ month_number linear model, this fits better
-The residuals are closer together and Adjusted R-squared of 0.3446 is getting us closer but the monthly_amount ~ date linear model still isn't ideal.  
-
-```{r}
-#the diagnostic plots reveal this model to have more a more significant fit than the first linear model of monthly_amount ~ month_number.
-plot(date.lm)
-```
-
-## Let's see if adding month number AND date work better in tandem
-# Run linear model with monthly_amount as target and month number + date as the predictor
-
-```{r}
-month_number_and_date.lm <- lm(monthly_amount~month_number + date, data=trainingSet)
-  # plot the regression diagnostics.   
-summary(month_number_and_date.lm)
-```
-##This model of monthly_amount ~ month_number + date has not really improved  
-
-The Adjusted R-squared of 0.3326 is not higher than our second model.
-
-# Plot monthly_amount ~ month_number + date linear model
-```{r}
-plot(month_number_and_date.lm)
-```
-
-##2. a. iii) ii) How to split test and train sets
-I chose to split the test and training data on years, and use the 2016 data as the test. I believed chronological split was the best way to try to predict the future monthly_amount. Unfortunately, the December seasonality is making the prediction hard.
-
-The monthly_amount ~ date model was the best of the training data. But far from perfect.
 
 ##2. a. iv) Create a prediction for monthly_amount in December 2016
-I really don't know how to work this out.
+
+```{r}
+
+#Calculate the predictions for location 1 and industry 1
+predictions <- calculate_predictions(aggregated_transactions, 1, 1)
+
+predictions
+
+```
 
 ##2. b. Describe the model
+
 Spit out the diagnostics for location 1, industry 1 BUT ALSO COMPUTE THE RMSE
+
+
 ## 2. b. i) How well does the model fit the data it is trained on in a statistical sense
 RMSE should work for this - for regressions tasks, RMSE is a good choice. Could discuss RMSE vs MAE
 
@@ -411,50 +426,40 @@ Explain the feature selection and why you left most variables in
 
 We will ultimately need three columns showing
 Indsustry - Location - RMSE 
- 
-  
-```{r}
-## MAKE R CODE TO SPIT OUT INDUSTRY, LOCATION AND RMSE WITH A PREDICTION FOR DEC 
-```
+
 ## 2. b. ii) How well does the model predict out of sample
 Talk about RMSE here
-```{r}
-#TO DO
-```
+
 ## 2. b. iii) Which features did you end up using in your final model?
 Explain which variables went in and why. Justify your feature selection method using external resources.
 
 ## 3. Advanced model fitting
 Describe what that means
+
 ## 3. a. Apply the modelling process you built for industry 1 and location 1 to all industries and locations programmatically
 
 ```{r}
-#TO DO
-```
-## 3. a. Apply the modelling process you built for industry 1 and location 1 to all industries and locations programmatically
-Describe what that means
-```{r}
-#Monthly_amount (or more specifically mean monthly amount) is the target variable whose values are to be modeled/predicted by other variables. Can't use location or industry as a predictor variable, so only possible predictors is month number and/or date.
 
-#Now, aggregate the data again tomake sure it's clean
-aggregated_transactions <- aggregate_transactions("transactions.csv", T)
-
+#Get the list of unique industries, sorted in numerical order 
 industries <- sort(unique(aggregated_transactions$industry))
+#Get the list of unique locations, sorted in numerical order
 locations <- sort(unique(aggregated_transactions$location))
 
-#Calculate the predictions for location 1 and industry 1
+#Calculate the predictions for all industry and location pairs
 all_predictions <- calculate_predictions(aggregated_transactions, industries, locations)
 
-all_predictions <- arrange(all_predictions, rmse)
-
-all_predictions
+arrange(all_predictions, rmse)
 
 ```
+
 ## 3. b. Calculate your evaluation measure for the training data and your testing data for all models
 This is where i talk more about RMSE
+
 ## 3. b. Identify the two worst industries and two locations for which your method performs worst.
 Describe what that means
+
 ## 3.c. What is causing the poor performance of the two indsutries and two locations that do badly? How might you fix it in the future?
 Describe what that means
+
 ## 4. Reporting - see separate Word document with report. Include an appendix and references in this main report.
  
