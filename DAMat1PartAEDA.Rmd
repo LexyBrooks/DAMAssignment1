@@ -1,9 +1,9 @@
 ---
 title: "DAM AT1 Part A Linear Regression, by Alex Brooks"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -270,7 +270,7 @@ The residuals are closer together and Adjusted R-squared of 0.2947 is getting us
 
 ```{r}
 #the diagnostic plots reveal this model to have more a more significant fit than the first linear model of monthly_amount ~ time_number.
-plot(date.lm)
+plot(time_number.lm)
 ```
 
 ## Let's see if adding month number AND time_number work better in tandem
@@ -287,7 +287,7 @@ The Adjusted R-squared of 0.2823 is lower than our second model, and the p-value
 
 # Plot monthly_amount ~ month_number + date linear model
 ```{r}
-plot(month_number_and_date.lm)
+plot(month_number_and_time_number.lm)
 ```
 
 The monthly_amount ~ time_number model was the best of the training data. But far from perfect.
