@@ -58,14 +58,14 @@ Let's visualise a scatterplot showing industry against monthly amount over time
 
 ```{r}
 ggplot(transactions, aes(x=date, y=monthly_amount, color=industry)) + 
-  geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Industry and monthly amount over time", x="Date", y="Monthly Amount")
+  geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Industry and monthly amount over time", x="Date", y="Monthly Amount") + scale_y_continuous(labels = scales::comma)
 ```
 
 Let's visualise a scatterplot showing location variables against monthly amount over time
 
 ```{r}
 ggplot(transactions, aes(x=date, y=monthly_amount, color=location)) + 
-  geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Location and monthly amount over time", x="Date", y="Monthly Amount")
+  geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Location and monthly amount over time", x="Date", y="Monthly Amount") + scale_y_continuous(labels = scales::comma)
 ```
 #### What about exploring detail about higher than average sales values?
 
@@ -222,6 +222,12 @@ Create a line plot of the variable monthly_amount for industry = 10 and location
 ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 and Location 10", x="Date", y="Mean Monthly Amount")
 ```
 
+```{r}
+ggplot(data=filter(aggregated_transactions, industry == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 ONLY", x="Date", y="Mean Monthly Amount")
+```
+```{r}
+ggplot(data=filter(aggregated_transactions, location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for location 10 ONLY", x="Date", y="Mean Monthly Amount")
+```
 ### 2. a. iii) i) Train a linear regression model with monthly_amount as the target for location = 1 and industry = 1
 
 TODO: We want to explore different models, with monthly_amount always the target, but trialling different predictors.
@@ -261,7 +267,6 @@ Run a linear model with the training set, with **monthly_amount** as target and 
 
 ```{r}
 month_number.lm <- lm(monthly_amount~month_number, data=trainingSet)
-
 summary(month_number.lm)
 ```
 
@@ -282,7 +287,10 @@ It's not the greatest fit, but there is a trend.
 If we plot monthly_amount ~ month_number linear model using statistical diagnostic plots, we can get a better view of the sign, size and significance of the fit and further confirm that month number is not likely to be the best predictor of monthly sales amounts.
 
 ```{r}
+par(mfrow=c(2,2)) # Change the panel layout to 2 x 2
 plot(month_number.lm)
+ 
+
 ```
 
 #### Training the monthly_amount ~ time_number linear model  
@@ -319,25 +327,27 @@ Finally, let's run a model with **monthly_amount** as target and **month number 
 
 ```{r}
 month_number_and_time_number.lm <- lm(monthly_amount~month_number + time_number, data=trainingSet)
- 
+
 summary(month_number_and_time_number.lm)
 ```
 
-#### Assessing the monthly_amount ~ time_number linear model 
+#### Assessing the monthly_amount ~ time_number linear model on training data
 
 The Adjusted R-squared of 0.2823 is lower than our second model, and the p-value is higher.
 
 ```{r}
+
 plot(month_number_and_time_number.lm)
+#accuracy diagnotics
+length(coefficients(month_number_and_time_number.lm))
+MSE <- month_number_and_time_number.lm/length(month_number_and_time_number.lm$residuals)
+RMSE <- sqrt(MSE)
+sig2 <- RSS / res$df.residual
 ```
 
 The monthly_amount ~ time_number model was the best of the training data. But far from perfect.
 
 ### 2. a. iii) ii) How to split test and train sets
-
-#### NEED TO RE-WRITE THIS
-
-I chose to split the test and training data on years, and use the 2016 data as the test. I believed chronological split was the best way to try to predict the future monthly_amount. Unfortunately, the December seasonality is making the prediction hard.
 
 #### Function to hold our linear model and output predictions
 
@@ -346,8 +356,111 @@ Based on the knowledge gained from the assessment above, a function was written 
 It also includes a prediction for the missing December 2016 data. This is achieved by adding an extra row to the data for December 2016 (done after training the model and calculated the RMSE) with a monthly_amount of 0 and a time_number one greater than the next highest time number. This allowed a prediction to be made for all rows, including December 2016.
 
 ```{r}
+# Train a linear regression model and return predictions including the RMSE
+make_predictions <- function(df, testingNum, ind, loc, setToTest = "full", forecast = FALSE) {
+  
+  output = data.frame()
+  
+  # Arrange dataset by date
+  arrange(df, date)
+  
+  # Add a number to represent date order
+  df$time_number = c(1:nrow(df))
+  
+  if(testingNum == 0) {
+    trainingNum = nrow(df)
+  } else {
+    # Training number is the number of rows minus the testingNum we have set
+    trainingNum = nrow(df) - testingNum
+  }
+  
+  
+  # Training set is all rows from the start minus the number in the test set. We'll arrange again, just in case.
+  trainingSet = head(arrange(df, time_number), trainingNum)
+  
+  # Testing set is the last 'testingNum' rows. We'll arrange again, just in case.
+  testingSet = tail(arrange(df, time_number), testingNum)
 
-calculate_predictions <- function(df, industries, locations) {
+  # Train the model we selected earlier as the best, using the trainingSet
+  training.model = lm(monthly_amount~time_number, data=trainingSet)
+  
+  #Determine the data set we want to make predictions on
+  if (setToTest == "train") {
+    dataSet = trainingSet
+  } else if (setToTest == "test") {
+    dataSet = testingSet
+  } else {
+    dataSet = df
+  }
+  
+  # Output a prediction based on the dataSet
+  prediction = predict(training.model, dataSet)
+  
+  output <- data.frame(industry = dataSet$industry,
+                        location = dataSet$location,
+                        month_number = dataSet$month_number,
+                        year_number = dataSet$year_number,
+                        time_number = dataSet$time_number,
+                        actual = dataSet$monthly_amount,
+                        prediction)
+  
+  #Calculate the error for each prediction
+  output$error = with(output, prediction-actual)
+  
+  #Calculate the root mean standard error
+  rmse = with(output, sqrt(mean(error^2)))
+  
+  output$rmse = rmse
+        
+  if (forecast) {
+    
+    # Create a dataframe containing just the December 2016 data
+    december_2016 = data.frame(industry=ind,
+                               location=loc,
+                               monthly_amount=0,
+                               month_number=12,
+                               year_number=2016,
+                               time_number=(nrow(dataSet)+1))
+    
+    output = forecast_predictions(december_2016, training.model, rmse, ind, loc)
+        
+  }
+
+  return(output)
+  
+}
+
+```
+
+```{r}
+
+#Forecast predictions
+forecast_predictions <- function(df, trainingModel, rmse, industry, location) {
+  
+  output = data.frame()
+    
+    #Forecast a prediction using the training model and the December 2016 data
+    prediction_2016 = predict(trainingModel, df)
+    
+    #Replace the december 2016 data frame with a new data frame
+    output = data.frame(industry = df$industry, location = df$location)
+    
+    #Add the prediction
+    output$prediction = prediction_2016
+    
+    #add the rmse calculated by the model
+    output$rmse = rmse
+    
+    # Return the December 2016 prediction data frame
+    return(output)
+  
+}
+
+```
+
+```{r}
+
+return_predictions <- function(df, industries, locations, setToTest = "full", forecast = FALSE) {
 
   output = data.frame()
   
@@ -371,93 +484,48 @@ calculate_predictions <- function(df, industries, locations) {
       temp = df[df$industry == ind & df$location == loc, ]
       
       # Check to make sure you have at least 'trainingMultiplier' times the number of training rows than testing rows
-      if (length(unique(temp$date)) >= ceiling(trainingMultiplier*testingNum)) {
+      if (nrow(temp) >= ceiling(trainingMultiplier*testingNum)) {
         
-        # Arrange dataset by date
-        arrange(temp, date)
-        
-        # Add a number to represent date order
-        temp$time_number = c(1:nrow(temp))
-        
-        # Training number is the number of rows minus the testingNum
-        trainingNum = nrow(temp) - testingNum
-        
-        # Training set is all rows from the start minus the number in the test set. We'll arrange again, just in case.
-        trainingSet = head(arrange(temp, time_number), trainingNum)
-        
-        # Testing set is the last 'testingNum' rows. We'll arrange again, just in case.
-        testingSet = tail(arrange(temp, time_number), testingNum)
-        
-        # Run the model
-        training.model = lm(monthly_amount~time_number, data=trainingSet)
-       # testing.model = lm(monthly_amount~time_number, data=testingSet)
-        
-        # Calculate the mean standard error
-        training.mse <- mean(residuals(training.model)^2)
-        #testing.mse <- mean(residuals(testing.model)^2)
-        
-        # Calculate root mean squared error
-        training.rmse <- sqrt(training.mse)
-       # testing.rmse <- sqrt(testing.mse)
-
-        ### Now, add an extra row into temp for the December 2016 prediction, giving December 2016 a monthly_amount of 0
-        
-        # Create a dataframe containing just the December 2016 data
-        december_2016 = data.frame(date = "2016-12-01",
-                                   industry=ind,
-                                   location=loc,
-                                   monthly_amount=0,
-                                   month_number=12,
-                                   year_number=2016,
-                                   time_number=(nrow(temp)+1))
-        
-        # Ensure temp is of type data frame
-        temp = as.data.frame(temp)
-        #testingSet = as.data.frame(testingSet)
-        
-        # Add the December 2016 row
-        temp = rbind(temp, december_2016)
-       # testingSet = rbind(testingSet, december_2016)
-
-        # Output a prediction based on all rows and add it to the temp data frame
-        temp$prediction = predict(training.model, temp)
-        testingSet$prediction = predict(training.model, testingSet)
-        
-        # Get the last prediction value (which is the Dec 2016 value).
-        train_dec_2016_prediction = tail(temp$prediction, 1)
-       # test_dec_2016_prediction = tail(testingSet$prediction, 1)
-        
-        # Create row to add to the output data frame, including industry and location variables
-        dataRow = c(ind,loc,training.rmse,train_dec_2016_prediction)
-        
+        predictionDataSet = make_predictions(temp, testingNum, ind, loc, setToTest, forecast)
+      
       } else {
         # Append entry to output data frame when not enough data to compute
-        dataRow = c(ind,loc,NA,NA)
+        predictionDataSet = c(ind,loc,NA,NA)
       }
       
       # Add the row to the output dataframe
-      output = rbind(output, dataRow)
+      output = rbind(output, predictionDataSet)
     }
   }
-  
-  #Add column names to the output data frame
-  colnames(output) <- c("industry","location", "train_rmse", "Train Dec 2016 Prediction")
   
   #Return the output
   return(output)
 }
-
 ```
+
+
 
 ### 2. a. iv) Create a prediction for monthly_amount in December 2016
 
 Calculate the predictions for location 1 and industry 1 using the function above
 
 ```{r}
-
-calculate_predictions(aggregated_transactions, 1, 1)
-
+aggregated_transactions = aggregate_transactions(transactions)
 ```
+
+```{r}
+#Filter aggregated_transactions by location 1 and industry 1
+loc1_ind1_df <- aggregated_transactions[aggregated_transactions$industry == 1 & aggregated_transactions$location == 1, ]
+
+prediction_for_industry1_location1 = make_predictions(loc1_ind1_df, 0, 1, 1, "full", forecast = TRUE)
+
+prediction_for_industry1_location1
+```
+
+### 2. a. iv) Create a prediction for monthly_amount in December 2016
+
+Calculate the predictions for location 1 and industry 1 using the function above
+
 
 ### 2. b. Describe the model
 
@@ -491,14 +559,15 @@ Describe what that means
 
 # Get the list of unique industries, sorted in numerical order 
 industries <- sort(unique(aggregated_transactions$industry))
+
 # Get the list of unique locations, sorted in numerical order
 locations <- sort(unique(aggregated_transactions$location))
 
-# Calculate the predictions for all industry and location pairs
-all_predictions <- calculate_predictions(aggregated_transactions, industries, locations)
+# Calculate the predictions for all industry and location pairs on training data
+prediction_for_all_industry_location <- return_predictions(aggregated_transactions, industries, locations, setToTest = "test", forecast = FALSE)
 
 # Order by RMSE
-arrange(all_predictions, train_rmse)
+prediction_for_all_industry_location
 
 ```
 
@@ -513,3 +582,22 @@ Describe what that means
 
 ### 4. Reporting - see separate Word document with report. Include an appendix and references in this main report.
  
+## Appendix A - Predictions for December 2016 for all industry/location combinations
+
+```{r}
+
+aggregated_transactions = aggregate_transactions(transactions)
+
+# Get the list of unique industries, sorted in numerical order 
+industries <- sort(unique(aggregated_transactions$industry))
+
+# Get the list of unique locations, sorted in numerical order
+locations <- sort(unique(aggregated_transactions$location))
+
+# Calculate the predictions for all industry and location pairs on test data
+prediction_for_all_industry_location <- return_predictions(aggregated_transactions, industries, locations, setToTest = "test", forecast = TRUE)
+
+# Order by RMSE
+prediction_for_all_industry_location
+
+```
