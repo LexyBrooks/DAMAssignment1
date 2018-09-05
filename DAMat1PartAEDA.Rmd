@@ -67,6 +67,7 @@ Let's visualise a scatterplot showing location variables against monthly amount 
 ggplot(transactions, aes(x=date, y=monthly_amount, color=location)) + 
   geom_point() + geom_smooth(se = FALSE, color = "red") + labs(title="Location and monthly amount over time", x="Date", y="Monthly Amount") + scale_y_continuous(labels = scales::comma)
 ```
+
 #### What about exploring detail about higher than average sales values?
 
 It makes sense to explore where and why the monthly amounts are higher than average, using the 'mean' as the indicator of average.
@@ -159,78 +160,9 @@ aggregated_transactions
 ggplot(data=filter(aggregated_transactions, industry == 1 & location == 1), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 1 and Location 1", x="Date", y="Mean Monthly Amount")
 ```
 
-#### What about line plots of other industry and location codes?
-
-Create line plots of the variable monthly_amount for industry = 2 and location = 2
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 2 & location == 2), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 2 and Location 2", x="Date", y="Mean Monthly Amount")
-```
-The line plot reveals high monthly seasonality, with November and December mean monthly sales mounts plummeting compared to January and February.
-
-Create a line plot of the variable monthly_amount for industry = 3 and location = 3
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 3 & location == 3), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 3 and Location 3", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 4 and location = 4
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 4 & location == 4), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 4 and Location 4", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 5 and location = 5
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 5 & location == 5), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 5 and Location 5", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for location = 6
-
-```{r}
-ggplot(data=filter(aggregated_transactions, location == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Location 6 ONLY", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 6
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 6), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 6 ONLY", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 7 and location = 7
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 7 & location == 7), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 7 and Location 7", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 8 and location = 8
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 8 & location == 8), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 8 and Location 8", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 9 and location = 9
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 9 & location == 9), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 9 and Location 9", x="Date", y="Mean Monthly Amount")
-```
-
-Create a line plot of the variable monthly_amount for industry = 10 and location = 10
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 10 & location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 and Location 10", x="Date", y="Mean Monthly Amount")
-```
-
-```{r}
-ggplot(data=filter(aggregated_transactions, industry == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for Industry 10 ONLY", x="Date", y="Mean Monthly Amount")
-```
-```{r}
-ggplot(data=filter(aggregated_transactions, location == 10), aes(x=date, y=monthly_amount, group=1)) + geom_line(color="red") + geom_point() + labs(title="Line plot of mean monthly amount for location 10 ONLY", x="Date", y="Mean Monthly Amount")
-```
 ### 2. a. iii) i) Train a linear regression model with monthly_amount as the target for location = 1 and industry = 1
 
-TODO: We want to explore different models, with monthly_amount always the target, but trialling different predictors.
+We want to explore different models, with monthly_amount always the target, but trialling different predictors.
 
 As industry and location are the same for all entries, they will not be used as predictors.
 
@@ -242,7 +174,11 @@ tempSet <- aggregated_transactions[aggregated_transactions$industry == 1 & aggre
 testingNum = 14
 
 # The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries
-# This value is explained in the function below, but was tuned based on analysis
+# * 1.6 was the minimum size based on trials that produced the same RMSE compared to higher sampling.
+# * A value of 4 or above returned no results due to insufficient rows. 1.5 or below returned warnings about rank-deficient fits
+# * Between 1.6 and 3 provided the same RMSE error values
+# * However, when trainingMultiplier was >=1.6 or <=2, results included one extra location/industry combination.
+# * The lowest number was chosen that did not change RMSE values, to maximise chance of calculation on smaller sample sizes without compromising predictions.
 trainingMultiplier = 1.6
 
 #Arrange dataset by dateand add a time_number value to represent date order
@@ -335,16 +271,6 @@ summary(month_number_and_time_number.lm)
 
 The Adjusted R-squared of 0.2823 is lower than our second model, and the p-value is higher.
 
-```{r}
-
-plot(month_number_and_time_number.lm)
-#accuracy diagnotics
-length(coefficients(month_number_and_time_number.lm))
-MSE <- month_number_and_time_number.lm/length(month_number_and_time_number.lm$residuals)
-RMSE <- sqrt(MSE)
-sig2 <- RSS / res$df.residual
-```
-
 The monthly_amount ~ time_number model was the best of the training data. But far from perfect.
 
 ### 2. a. iii) ii) How to split test and train sets
@@ -353,14 +279,20 @@ The monthly_amount ~ time_number model was the best of the training data. But fa
 
 Based on the knowledge gained from the assessment above, a function was written which trains a linear regession model, calculates the RMSE (root mean squared error) and determines predictions for all rows in a specific data set.
 
-It also includes a prediction for the missing December 2016 data. This is achieved by adding an extra row to the data for December 2016 (done after training the model and calculated the RMSE) with a monthly_amount of 0 and a time_number one greater than the next highest time number. This allowed a prediction to be made for all rows, including December 2016.
+If 'forecast' is set to true, it will call the make_forecasts function and return forecasts for December 2016.
+
+Depending on whether forecasts is set to ture or false, it will return forecast data (if true) for December 2016, or predictions (if forecast = false) for existing data.
 
 ```{r}
-# Train a linear regression model and return predictions including the RMSE
-make_predictions <- function(df, testingNum, ind, loc, setToTest = "full", forecast = FALSE) {
-  
-  output = data.frame()
-  
+# Train a linear regression model based on the data frame entered and the number of rows in the testing set
+
+# Parameters
+#   df = data frame of dataset to test
+#   testingNum = Number of items in the testing set
+
+# Returns a trained linear regression model
+
+train_model <- function(df, testingNum) {
   # Arrange dataset by date
   arrange(df, date)
   
@@ -374,7 +306,6 @@ make_predictions <- function(df, testingNum, ind, loc, setToTest = "full", forec
     trainingNum = nrow(df) - testingNum
   }
   
-  
   # Training set is all rows from the start minus the number in the test set. We'll arrange again, just in case.
   trainingSet = head(arrange(df, time_number), trainingNum)
   
@@ -383,6 +314,36 @@ make_predictions <- function(df, testingNum, ind, loc, setToTest = "full", forec
 
   # Train the model we selected earlier as the best, using the trainingSet
   training.model = lm(monthly_amount~time_number, data=trainingSet)
+  
+  return(training.model)
+  
+}
+
+```
+
+```{r}
+
+# Parameters
+#   df = data frame of dataset to test
+#   testingNum = NUmber of items in the testing set
+#   ind = Industry
+#   loc = Location
+#   setToTest = which data set to run predictions on. Can be 'test', 'train', or 'full' (i.e. the whole data set)
+#   forecast - whether to return forecast data (TRUE), or predictions on existing data (FALSE)
+
+# Returns a data frame of predictions or forecasts
+
+make_predictions <- function(df, testingNum, ind, loc, setToTest = "test", forecast = FALSE) {
+  
+  output = data.frame()
+  
+  # Arrange dataset by date
+  arrange(df, date)
+  
+  # Add a number to represent date order
+  df$time_number = c(1:nrow(df))
+  
+  training.model = train_model(df, testingNum)
   
   #Determine the data set we want to make predictions on
   if (setToTest == "train") {
@@ -434,7 +395,17 @@ make_predictions <- function(df, testingNum, ind, loc, setToTest = "full", forec
 
 ```{r}
 
-#Forecast predictions
+#Forecasting December 2016 predictions is achieved by creating a data set of 1 row (for december 2016). Calculating the appropriate 'time_number value' and giving the row a monthly_amount value of 0. A training model created against training data is then used to predict the December 2016 monthly amount.
+
+# Parameters
+#   df - dataframe of the whole data set used (i.e. for industry X and location Y)
+#   trainingModel - trainingModel created by 'make_predictions' function
+#   rmse - Root mean squared error calculated for the model predictions by 'make_predictions'
+#   industry - Industry number
+#   location - Location number
+
+# Returns a data frame of December 2016 prediction
+
 forecast_predictions <- function(df, trainingModel, rmse, industry, location) {
   
   output = data.frame()
@@ -459,6 +430,16 @@ forecast_predictions <- function(df, trainingModel, rmse, industry, location) {
 ```
 
 ```{r}
+# Loops through indutry and location combinations, makes predictions (or forecasts) and return the data frame with this data
+
+# Parameters
+#   df = data frame of dataset to test
+#   industries = List of industries
+#   locations = List of locations
+#   setToTest = which data set to run predictions on. Can be 'test', 'train', or 'full' (i.e. the whole data set)
+#   forecast - whether to return forecast data (TRUE), or predictions on existing data (FALSE)
+
+# Returns a data frame of predictions or forecasts
 
 return_predictions <- function(df, industries, locations, setToTest = "full", forecast = FALSE) {
 
@@ -467,14 +448,8 @@ return_predictions <- function(df, industries, locations, setToTest = "full", fo
   # Want to make sure we capture a couple of months from the preceeding year to capture the seasonal data
   testingNum = 14
   
-  # The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries
-  
-  # * 1.6 was the minimum size based on trials that produced the same RMSE compared to higher sampling.
-  # * A value of 4 or above returned no results due to insufficient rows. 1.5 or below returned warnings about rank-deficient fits
-  # * Between 1.6 and 3 provided the same RMSE error values
-  # * However, when trainingMultiplier was >=1.6 or <=2, results included one extra location/industry combination.
-  # * The lowest number was chosen that did not change RMSE values, to maximise chance of calculation on smaller sample sizes without compromising predictions.
-  
+  # The test/train split should ensure training data has 'trainingMultiplier' times the number of entries of tesing entries.
+  # The rationale for this exact value was described earlier
   trainingMultiplier = 1.6
   
   for (ind in industries) {
@@ -510,10 +485,6 @@ return_predictions <- function(df, industries, locations, setToTest = "full", fo
 Calculate the predictions for location 1 and industry 1 using the function above
 
 ```{r}
-aggregated_transactions = aggregate_transactions(transactions)
-```
-
-```{r}
 #Filter aggregated_transactions by location 1 and industry 1
 loc1_ind1_df <- aggregated_transactions[aggregated_transactions$industry == 1 & aggregated_transactions$location == 1, ]
 
@@ -522,12 +493,13 @@ prediction_for_industry1_location1 = make_predictions(loc1_ind1_df, 0, 1, 1, "fu
 prediction_for_industry1_location1
 ```
 
-### 2. a. iv) Create a prediction for monthly_amount in December 2016
-
-Calculate the predictions for location 1 and industry 1 using the function above
-
-
 ### 2. b. Describe the model
+
+```{r}
+model_for_industry1_location1 = train_model(loc1_ind1_df, 14)
+
+summary(model_for_industry1_location1)
+```
 
 Spit out the diagnostics for location 1, industry 1 BUT ALSO COMPUTE THE RMSE
 
@@ -572,6 +544,76 @@ prediction_for_all_industry_location
 ```
 
 ### 3. b. Calculate your evaluation measure for the training data and your testing data for all models
+
+```{r}
+#Aggregate the transactions data
+aggregated_transactions = aggregate_transactions(transactions)
+
+# Get the list of unique industries, sorted in numerical order 
+industries <- sort(unique(aggregated_transactions$industry))
+
+# Get the list of unique locations, sorted in numerical order
+locations <- sort(unique(aggregated_transactions$location))
+
+  output = data.frame()
+  
+  #Include some months from previous year (outlined previously)
+  testingNum = 14
+  #Ensure enough training data (outline previously)
+  trainingMultiplier = 1.6
+  
+  # Arrange dataset by date
+  arrange(temp, date)
+  
+  for (ind in industries) {
+    for (loc in locations) {
+      
+      temp = aggregated_transactions[aggregated_transactions$industry == ind & aggregated_transactions$location == loc, ]
+      
+      #Make sure we have enough training data
+      if (nrow(temp) >= ceiling(trainingMultiplier*testingNum)) {
+        
+        # Add a number to represent date order
+        temp$time_number = c(1:nrow(temp))
+        # Training number is the number of rows minus the testingNum we have set
+        trainingNum = nrow(temp) - testingNum
+        
+        # Training set is all rows from the start minus the number in the test set. We'll arrange again, just in case.
+        trainingSet = head(arrange(temp, time_number), trainingNum)
+        
+        # Testing set is the last 'testingNum' rows. We'll arrange again, just in case.
+        testingSet = tail(arrange(temp, time_number), testingNum)
+      
+        # Train the model we selected earlier as the best, using the trainingSet
+        model = lm(monthly_amount~time_number, data=trainingSet)
+      
+        # Output a prediction based on the dataSet
+        training.prediction = predict(model, trainingSet)
+        testing.prediction = predict(model, testingSet)
+        
+        trainingSet$prediction = training.prediction
+        testingSet$prediction = testing.prediction
+        
+        trainingSet$error = with(trainingSet, prediction-monthly_amount)
+        testingSet$error = with(testingSet, prediction-monthly_amount)
+        
+        trainingSet.rmse = with(trainingSet, sqrt(mean(error^2)))
+        testingSet.rmse = with(testingSet, sqrt(mean(error^2)))
+        
+        tempOutput = c(ind, loc, trainingSet.rmse, testingSet.rmse)
+        
+      } else {
+        tempOutput = c(ind, loc, NA, NA)
+      }
+      
+      output = rbind(output, tempOutput)
+    }
+  }
+  colnames(output) <- c("Industry", "Location", "Train RMSE", "Test RMSE")
+  
+  output
+```
+
 This is where i talk more about RMSE
 
 ### 3. b. Identify the two worst industries and two locations for which your method performs worst.
@@ -583,21 +625,3 @@ Describe what that means
 ### 4. Reporting - see separate Word document with report. Include an appendix and references in this main report.
  
 ## Appendix A - Predictions for December 2016 for all industry/location combinations
-
-```{r}
-
-aggregated_transactions = aggregate_transactions(transactions)
-
-# Get the list of unique industries, sorted in numerical order 
-industries <- sort(unique(aggregated_transactions$industry))
-
-# Get the list of unique locations, sorted in numerical order
-locations <- sort(unique(aggregated_transactions$location))
-
-# Calculate the predictions for all industry and location pairs on test data
-prediction_for_all_industry_location <- return_predictions(aggregated_transactions, industries, locations, setToTest = "test", forecast = TRUE)
-
-# Order by RMSE
-prediction_for_all_industry_location
-
-```
